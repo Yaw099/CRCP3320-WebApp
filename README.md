@@ -1,2 +1,2 @@
 # CRCP3320-WebApp
-web app for the Spring term
+web application for the Spring term
