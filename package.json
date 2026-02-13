@@ -1,0 +1,21 @@
+{
+  "name": "crcp3320-webapp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "web app for the Spring term",
+  "homepage": "https://github.com/Yaw099/CRCP3320-WebApp#readme",
+  "bugs": {
+    "url": "https://github.com/Yaw099/CRCP3320-WebApp/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Yaw099/CRCP3320-WebApp.git"
+  },
+  "license": "MIT",
+  "author": "yaw asare",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
