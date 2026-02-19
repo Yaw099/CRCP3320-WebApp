@@ -30,6 +30,47 @@ router.get("/sessions", async (req, res) => {
   }
 });
 
+router.patch("/sessions/:id/complete", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const { result, time_elapsed, moves } = req.body;
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: "Invalid session id" });
+    }
+
+    if (result !== "win" && result !== "lose") {
+      return res.status(400).json({ error: "result must be 'win' or 'lose'" });
+    }
+
+    if (!Number.isInteger(time_elapsed) || time_elapsed < 0) {
+      return res.status(400).json({ error: "time_elapsed must be a non-negative integer" });
+    }
+
+    if (!Number.isInteger(moves) || moves < 0) {
+      return res.status(400).json({ error: "moves must be a non-negative integer" });
+    }
+
+    const dbRes = await pool.query(
+      `UPDATE game_sessions
+       SET result = $1, time_elapsed = $2, moves = $3
+       WHERE id = $4 AND result IS NULL
+       RETURNING id, difficulty, width, height, mines, result, time_elapsed, moves, created_at`,
+      [result, time_elapsed, moves, id]
+    );
+
+    if (dbRes.rowCount === 0) {
+      return res.status(404).json({ error: "Session not found or already completed" });
+    }
+
+    res.json({ message: "Session completed", session: dbRes.rows[0] });
+  } catch (err) {
+    console.error("PATCH /sessions/:id/complete error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
 router.post("/start", async (req, res) => {
   try {
     const { difficulty } = req.body;
