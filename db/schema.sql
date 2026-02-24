@@ -9,3 +9,13 @@ CREATE TABLE IF NOT EXISTS game_sessions (
   moves INT,
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+ALTER TABLE game_sessions
+ADD COLUMN IF NOT EXISTS seed BIGINT;
+
+UPDATE game_sessions
+SET seed = FLOOR(RANDOM() * 2147483647)
+WHERE seed IS NULL;
+
+ALTER TABLE game_sessions
+ALTER COLUMN seed SET NOT NULL;

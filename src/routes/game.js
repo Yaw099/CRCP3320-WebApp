@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { pool } from "../db.mjs";
+import crypto from "crypto";
 
 const router = Router();
 
@@ -9,6 +10,10 @@ const difficulties = [
   { name: "medium", width: 16, height: 16, mines: 40 },
   { name: "hard", width: 30, height: 16, mines: 99 }
 ];
+
+function makeSeed() {
+  return crypto.randomInt(0, 2 ** 31);
+}
 
 router.get("/difficulties", (req, res) => {
   res.json(difficulties);
@@ -81,11 +86,13 @@ router.post("/start", async (req, res) => {
       return res.status(400).json({ error: "Invalid difficulty" });
     }
 
+    const seed = makeSeed();
+
     const result = await pool.query(
-      `INSERT INTO game_sessions (difficulty, width, height, mines)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, difficulty, width, height, mines, created_at`,
-      [selected.name, selected.width, selected.height, selected.mines]
+      `INSERT INTO game_sessions (difficulty, width, height, mines, seed)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING id, difficulty, width, height, mines, seed, created_at`,
+      [selected.name, selected.width, selected.height, selected.mines, seed]
     );
 
     res.json({
