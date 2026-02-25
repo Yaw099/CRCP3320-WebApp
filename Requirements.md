@@ -74,15 +74,15 @@ The system shall allow users to register and log in.
 
 - [ ] FR9 – Leaderboards
 The system shall provide leaderboards filtered by difficulty.
-- [ ] FR9.1 The system shall rank by best completion time (and optionally tie-break using moves).
-- [ ] FR9.2 The system shall limit results (e.g., top 10 / top 25).
+    - [ ] FR9.1 The system shall rank by best completion time (and optionally tie-break using moves).
+    - [ ] FR9.2 The system shall limit results (e.g., top 10 / top 25).
 
-- [ ] FR10 – Player Statistics
+- [x] FR10 – Player Statistics
 The system shall provide player stats such as:
-- [ ] FR10.1 total games played, wins, losses
-- [ ] FR10.2 win rate
-- [ ] FR10.3 best time per difficulty
-- [ ] FR10.4 recent game history list
+    - [x] FR10.1 total games played, wins, losses
+    - [x] FR10.2 win rate
+    - [x] FR10.3 best time per difficulty
+    - [x] FR10.4 recent game history list
 
 - [ ] FR11 – Front-End UI Requirements
 The system shall provide a web UI for playing Minesweeper.

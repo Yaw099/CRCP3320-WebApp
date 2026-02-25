@@ -35,6 +35,85 @@ router.get("/sessions", async (req, res) => {
   }
 });
 
+// GET /api/game/stats?user_id=123&limit=10
+router.get("/stats", async (req, res) => {
+  try {
+    const rawUserId = req.query.user_id;
+    const limit = Number(req.query.limit ?? 10);
+
+    if (!Number.isInteger(limit) || limit <= 0 || limit > 100) {
+      return res.status(400).json({ error: "limit must be an integer between 1 and 100" });
+    }
+
+    // If user_id is omitted, return overall stats across all sessions (useful during dev).
+    // If you want “guest stats” specifically, change filter to `user_id IS NULL` when rawUserId is missing.
+    let filterSql = "";
+    let params = [];
+    if (rawUserId !== undefined) {
+      const userId = Number(rawUserId);
+      if (!Number.isInteger(userId) || userId <= 0) {
+        return res.status(400).json({ error: "user_id must be a positive integer" });
+      }
+      filterSql = "WHERE user_id = $1";
+      params = [userId];
+    }
+
+    // 1) Totals: games played / wins / losses + win rate
+    const totalsQuery = `
+      SELECT
+        COUNT(*) FILTER (WHERE result IS NOT NULL)                        AS total_games,
+        COUNT(*) FILTER (WHERE result = 'win')                            AS wins,
+        COUNT(*) FILTER (WHERE result = 'lose')                           AS losses
+      FROM game_sessions
+      ${filterSql};
+    `;
+    const totalsRes = await pool.query(totalsQuery, params);
+    const totalsRow = totalsRes.rows[0];
+
+    const totalGames = Number(totalsRow.total_games ?? 0);
+    const wins = Number(totalsRow.wins ?? 0);
+    const losses = Number(totalsRow.losses ?? 0);
+    const winRate = totalGames > 0 ? wins / totalGames : 0;
+
+    // 2) Best time per difficulty (wins only)
+    const bestTimesQuery = `
+      SELECT difficulty, MIN(time_elapsed) AS best_time
+      FROM game_sessions
+      ${filterSql ? `${filterSql} AND result = 'win'` : "WHERE result = 'win'"}
+      GROUP BY difficulty
+      ORDER BY difficulty;
+    `;
+    const bestTimesRes = await pool.query(bestTimesQuery, params);
+
+    // 3) Recent completed history (wins/losses)
+    const recentQuery = `
+      SELECT id, user_id, difficulty, width, height, mines, result, time_elapsed, moves, created_at
+      FROM game_sessions
+      ${filterSql ? `${filterSql} AND result IS NOT NULL` : "WHERE result IS NOT NULL"}
+      ORDER BY created_at DESC
+      LIMIT ${limit};
+    `;
+    const recentRes = await pool.query(recentQuery, params);
+
+    res.json({
+      totals: {
+        total_games: totalGames,
+        wins,
+        losses,
+        win_rate: winRate, // decimal (0.0–1.0). If you prefer percent, multiply by 100 on the client.
+      },
+      best_time_by_difficulty: bestTimesRes.rows.map((r) => ({
+        difficulty: r.difficulty,
+        best_time: r.best_time === null ? null : Number(r.best_time),
+      })),
+      recent_history: recentRes.rows,
+    });
+  } catch (err) {
+    console.error("GET /stats error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.patch("/sessions/:id/complete", async (req, res) => {
   try {
     const id = Number(req.params.id);

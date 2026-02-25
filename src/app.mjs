@@ -19,6 +19,11 @@ app.listen(port, () => {
 
 //  http://localhost:3000/api/game/start
 
+// node src/app.mjs
+
+// npm start
+// npm run dev
+
 /*
 
 {
