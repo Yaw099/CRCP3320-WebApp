@@ -31,3 +31,17 @@ app.listen(port, () => {
 }
 
 */
+
+
+/*
+curl -X POST http://127.0.0.1:3000/api/game/session \
+  -H "Content-Type: application/json" \
+  -d '{"difficulty":"easy"}'
+
+docker exec -it minesweeper_db psql -U postgres -d minesweeper_arcade
+SELECT id, difficulty, seed FROM game_sessions;
+
+
+curl http://127.0.0.1:3000/api/game/stats
+curl "http://127.0.0.1:3000/api/game/stats?user_id=1"
+*/

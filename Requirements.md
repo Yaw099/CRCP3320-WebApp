@@ -49,17 +49,17 @@ The system shall generate a Minesweeper board that places mines and computes adj
     - [ ] FR4.1 The system shall ensure the first click is not a mine (standard Minesweeper behavior).
     - [ ] FR4.2 The system shall support deterministic board generation using a seed (optional but recommended).
 
-- [ ] FR5 – Core Gameplay Interactions
+- [x] FR5 – Core Gameplay Interactions
 The system shall allow the user to interact with the board using:
-    - [ ] FR5.1 Reveal a tile
-    - [ ] FR5.2 Flag/unflag a tile
-    - [ ] FR5.3 Auto-reveal neighbors when a 0-adjacent tile is revealed
-    - [ ] FR5.4 Detect win condition (all non-mine tiles revealed)
-    - [ ] FR5.5 Detect loss condition (mine revealed)
+    - [x] FR5.1 Reveal a tile
+    - [x] FR5.2 Flag/unflag a tile
+    - [x] FR5.3 Auto-reveal neighbors when a 0-adjacent tile is revealed
+    - [x] FR5.4 Detect win condition (all non-mine tiles revealed)
+    - [x] FR5.5 Detect loss condition (mine revealed)
 
-- [ ] FR6 – Game Timer and Move Tracking
+- [x] FR6 – Game Timer and Move Tracking
 The system shall track elapsed time for each session.
-    - [ ] FR6.1 The system shall track move count (or actions such as reveal/flag) per session.
+    - [x] FR6.1 The system shall track move count (or actions such as reveal/flag) per session.
 
 - [x] FR7 – End Game Session and Save Result
 The system shall allow the client to submit a completed game result (win/loss, time, difficulty, and session id).

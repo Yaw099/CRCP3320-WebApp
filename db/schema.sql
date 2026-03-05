@@ -35,4 +35,9 @@ ALTER COLUMN seed SET NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_game_sessions_user_id ON game_sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_game_sessions_created_at ON game_sessions(created_at);
 
+
+ALTER TABLE game_sessions
+  ADD COLUMN first_click_x INT NULL,
+  ADD COLUMN first_click_y INT NULL;
+
 COMMIT;
