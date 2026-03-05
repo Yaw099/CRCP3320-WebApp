@@ -5,6 +5,8 @@ import { generateBoard, key as cellKey } from "../game/board.mjs";
 
 const router = Router();
 const sessionState = new Map();
+const flags_count = st.flagged.size;
+const mines_remaining = Math.max(0, Number(s.mines) - flags_count);
 
 // Temporary in-memory mock data
 const difficulties = [
@@ -383,33 +385,54 @@ router.post("/sessions/:id/flag", async (req, res) => {
     if (!Number.isInteger(x) || !Number.isInteger(y)) return res.status(400).json({ error: "x and y must be integers" });
 
     const dbRes = await pool.query(
-      `SELECT id, width, height, result FROM game_sessions WHERE id = $1`,
+      `SELECT id, width, height, result
+       FROM game_sessions
+       WHERE id = $1`,
       [id]
     );
     if (dbRes.rowCount === 0) return res.status(404).json({ error: "Session not found" });
 
     const s = dbRes.rows[0];
-    if (s.result !== null) return res.status(409).json({ error: "Session already completed", result: s.result });
-    if (!inBounds(x, y, s.width, s.height)) return res.status(400).json({ error: "Out of bounds" });
+
+    // If you use DB result as “final,” block further actions
+    if (s.result !== null) {
+      return res.status(409).json({ error: "Session already completed", result: s.result });
+    }
+
+    if (!inBounds(x, y, s.width, s.height)) {
+      return res.status(400).json({ error: "Out of bounds" });
+    }
 
     let st = sessionState.get(id);
     if (!st) {
       st = { revealed: new Set(), flagged: new Set(), moves: 0, status: "playing" };
       sessionState.set(id, st);
     }
-    if (st.status !== "playing") return res.status(409).json({ error: "Game is not in playing state", status: st.status });
+
+    if (st.status !== "playing") {
+      return res.status(409).json({ error: "Game is not in playing state", status: st.status });
+    }
 
     const k = cellKey(x, y);
+
+    // Can't flag revealed tiles
     if (st.revealed.has(k)) {
       return res.json({ status: st.status, moves: st.moves, x, y, flagged: false, message: "Already revealed" });
     }
 
+    // Toggle
     if (st.flagged.has(k)) st.flagged.delete(k);
     else st.flagged.add(k);
 
     st.moves += 1;
 
-    return res.json({ status: st.status, moves: st.moves, x, y, flagged: st.flagged.has(k) });
+    return res.json({
+      status: st.status,
+      moves: st.moves,
+      x,
+      y,
+      flagged: st.flagged.has(k),
+    });
   } catch (err) {
     console.error("POST /sessions/:id/flag error:", err);
     return res.status(500).json({ error: "Internal server error" });

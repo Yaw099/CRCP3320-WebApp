@@ -2,19 +2,27 @@ import "dotenv/config";
 import express from 'express';
 import indexRoutes from "./routes/index.js";
 import gameRoutes from "./routes/game.js";
+import { pool } from "./db.mjs";
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(express.json());
 
+// const r = await pool.query("SELECT current_database() AS db, inet_server_addr() AS addr, inet_server_port() AS port");
+// console.log("DB:", r.rows[0]);
+
 // Mount routes
 app.use("/", indexRoutes);
 app.use("/api/game", gameRoutes);
 
+
+
 app.listen(port, () => {
   console.log(`Minesweeper Arcade backend running on http://localhost:${port}`);
 });
+
+
 
 
 //  http://localhost:3000/api/game/start

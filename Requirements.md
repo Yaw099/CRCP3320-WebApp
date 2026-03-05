@@ -44,10 +44,10 @@ The system shall allow a user (authenticated or guest) to start a new game sessi
     - [x] FR3.1 The system shall create a unique session identifier for each game.
     - [x] FR3.2 The system shall return the game settings (and a reproducible seed, if used).
 
-- [ ] FR4 – Minesweeper Board Generation
+- [x] FR4 – Minesweeper Board Generation
 The system shall generate a Minesweeper board that places mines and computes adjacency counts.
-    - [ ] FR4.1 The system shall ensure the first click is not a mine (standard Minesweeper behavior).
-    - [ ] FR4.2 The system shall support deterministic board generation using a seed (optional but recommended).
+    - [x] FR4.1 The system shall ensure the first click is not a mine (standard Minesweeper behavior).
+    - [x] FR4.2 The system shall support deterministic board generation using a seed (optional but recommended).
 
 - [x] FR5 – Core Gameplay Interactions
 The system shall allow the user to interact with the board using:
