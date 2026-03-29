@@ -72,10 +72,10 @@ The system shall allow users to register and log in.
     - [ ] FR8.2 The system shall support logout.
     - [ ] FR8.3 The system shall associate saved results with a user account when logged in.
 
-- [ ] FR9 – Leaderboards
+- [x] FR9 – Leaderboards
 The system shall provide leaderboards filtered by difficulty.
-    - [ ] FR9.1 The system shall rank by best completion time (and optionally tie-break using moves).
-    - [ ] FR9.2 The system shall limit results (e.g., top 10 / top 25).
+    - [x] FR9.1 The system shall rank by best completion time (and optionally tie-break using moves).
+    - [x] FR9.2 The system shall limit results (e.g., top 10 / top 25).
 
 - [x] FR10 – Player Statistics
 The system shall provide player stats such as:

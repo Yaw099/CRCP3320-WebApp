@@ -5,8 +5,6 @@ import { generateBoard, key as cellKey } from "../game/board.mjs";
 
 const router = Router();
 const sessionState = new Map();
-const flags_count = st.flagged.size;
-const mines_remaining = Math.max(0, Number(s.mines) - flags_count);
 
 // Temporary in-memory mock data
 const difficulties = [
@@ -125,7 +123,11 @@ router.get("/stats", async (req, res) => {
 router.patch("/sessions/:id/complete", async (req, res) => {
   try {
     const id = Number(req.params.id);
-    const { result, time_elapsed, moves } = req.body;
+    const { result, moves } = req.body ?? {};
+
+    if (!req.body) {
+      return res.status(400).json({ error: "Request body is required" });
+    }
 
     if (!Number.isInteger(id) || id <= 0) {
       return res.status(400).json({ error: "Invalid session id" });
@@ -135,27 +137,29 @@ router.patch("/sessions/:id/complete", async (req, res) => {
       return res.status(400).json({ error: "result must be 'win' or 'lose'" });
     }
 
-    if (!Number.isInteger(time_elapsed) || time_elapsed < 0) {
-      return res.status(400).json({ error: "time_elapsed must be a non-negative integer" });
-    }
-
     if (!Number.isInteger(moves) || moves < 0) {
       return res.status(400).json({ error: "moves must be a non-negative integer" });
     }
 
     const dbRes = await pool.query(
       `UPDATE game_sessions
-       SET result = $1, time_elapsed = $2, moves = $3
-       WHERE id = $4 AND result IS NULL
-       RETURNING id, difficulty, width, height, mines, result, time_elapsed, moves, created_at`,
-      [result, time_elapsed, moves, id]
+      SET result = $1,
+          moves = $2,
+          end_time = NOW(),
+          time_elapsed = GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (NOW() - created_at))))
+      WHERE id = $3 AND result IS NULL
+      RETURNING id, difficulty, width, height, mines, result, time_elapsed, moves, created_at, end_time`,
+      [result, moves, id]
     );
 
     if (dbRes.rowCount === 0) {
       return res.status(404).json({ error: "Session not found or already completed" });
     }
 
-    res.json({ message: "Session completed", session: dbRes.rows[0] });
+    res.json({
+      message: "Session completed",
+      session: dbRes.rows[0],
+    });
   } catch (err) {
     console.error("PATCH /sessions/:id/complete error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -232,6 +236,59 @@ router.get("/sessions/:id/board", async (req, res) => {
   }
 });
 
+router.get("/leaderboard", async (req, res) => {
+  try {
+    const { difficulty, limit = "10" } = req.query;
+
+    if (!difficulty || !difficulties.some((d) => d.name === difficulty)) {
+      return res.status(400).json({
+        error: "difficulty must be one of: easy, medium, hard",
+      });
+    }
+
+    const parsedLimit = Number(limit);
+
+    if (!Number.isInteger(parsedLimit) || parsedLimit <= 0) {
+      return res.status(400).json({
+        error: "limit must be a positive integer",
+      });
+    }
+
+    const safeLimit = Math.min(parsedLimit, 100);
+
+    const dbRes = await pool.query(
+      `SELECT id, user_id, difficulty, time_elapsed, moves, created_at
+       FROM game_sessions
+       WHERE difficulty = $1
+         AND result = 'win'
+         AND time_elapsed IS NOT NULL
+         AND moves IS NOT NULL
+       ORDER BY time_elapsed ASC, moves ASC, created_at ASC
+       LIMIT $2`,
+      [difficulty, safeLimit]
+    );
+
+    const leaderboard = dbRes.rows.map((row, index) => ({
+      rank: index + 1,
+      id: row.id,
+      user_id: row.user_id,
+      difficulty: row.difficulty,
+      time_elapsed: row.time_elapsed,
+      moves: row.moves,
+      created_at: row.created_at,
+    }));
+
+    res.json({
+      difficulty,
+      limit: safeLimit,
+      total_results: leaderboard.length,
+      leaderboard,
+    });
+  } catch (err) {
+    console.error("GET /leaderboard error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 router.post("/sessions/:id/reveal", async (req, res) => {
   try {
@@ -316,8 +373,13 @@ router.post("/sessions/:id/reveal", async (req, res) => {
       st.status = "lost";
       // Optional: immediately mark DB as lose (if you want server-authoritative results)
       await pool.query(
-        `UPDATE game_sessions SET result = 'lose' WHERE id = $1 AND result IS NULL`,
-        [id]
+        `UPDATE game_sessions
+        SET result = 'lose',
+            end_time = NOW(),
+            time_elapsed = GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (NOW() - created_at)))),
+            moves = $2
+        WHERE id = $1 AND result IS NULL`,
+        [id, st.moves]
       );
       return res.json({ status: st.status, moves: st.moves, revealed: [{ x, y, adj: null }], hit_mine: true });
     }
@@ -357,8 +419,13 @@ router.post("/sessions/:id/reveal", async (req, res) => {
     if (st.revealed.size >= safeCells) {
       st.status = "won";
       await pool.query(
-        `UPDATE game_sessions SET result = 'win' WHERE id = $1 AND result IS NULL`,
-        [id]
+        `UPDATE game_sessions
+        SET result = 'win',
+            end_time = NOW(),
+            time_elapsed = GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (NOW() - created_at)))),
+            moves = $2
+        WHERE id = $1 AND result IS NULL`,
+        [id, st.moves]
       );
     }
 

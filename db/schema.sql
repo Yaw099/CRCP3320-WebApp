@@ -37,7 +37,10 @@ CREATE INDEX IF NOT EXISTS idx_game_sessions_created_at ON game_sessions(created
 
 
 ALTER TABLE game_sessions
-  ADD COLUMN first_click_x INT NULL,
-  ADD COLUMN first_click_y INT NULL;
+  ADD COLUMN IF NOT EXISTS first_click_x INT NULL,
+  ADD COLUMN IF NOT EXISTS first_click_y INT NULL;
+
+ALTER TABLE game_sessions
+  ADD COLUMN IF NOT EXISTS end_time TIMESTAMP;
 
 COMMIT;
