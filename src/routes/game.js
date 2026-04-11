@@ -2,6 +2,9 @@ import { Router } from "express";
 import { pool } from "../db.mjs";
 import crypto from "crypto";
 import { generateBoard, key as cellKey } from "../game/board.mjs";
+import optionalAuth from "../middleware/optionalAuth.js";
+import requireAuth from "../middleware/requireAuth.js";
+
 
 const router = Router();
 const sessionState = new Map();
@@ -12,6 +15,22 @@ const difficulties = [
   { name: "medium", width: 16, height: 16, mines: 40 },
   { name: "hard", width: 30, height: 16, mines: 99 }
 ];
+
+async function getSessionById(id) {
+  const dbRes = await pool.query(
+    `SELECT id, user_id, width, height, mines, seed, result, first_click_x, first_click_y, created_at
+     FROM game_sessions
+     WHERE id = $1`,
+    [id]
+  );
+  return dbRes.rowCount ? dbRes.rows[0] : null;
+}
+
+function canAccessSession(req, session) {
+  if (session.user_id === null) return true; // guest session
+  if (!req.user) return false;
+  return req.user.id === session.user_id;
+}
 
 function inBounds(x, y, w, h) {
   return x >= 0 && x < w && y >= 0 && y < h;
@@ -120,7 +139,68 @@ router.get("/stats", async (req, res) => {
   }
 });
 
-router.patch("/sessions/:id/complete", async (req, res) => {
+router.get("/my-stats", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const limit = Number(req.query.limit ?? 10);
+
+    if (!Number.isInteger(limit) || limit <= 0 || limit > 100) {
+      return res.status(400).json({ error: "limit must be an integer between 1 and 100" });
+    }
+
+    const totalsRes = await pool.query(
+      `SELECT
+         COUNT(*) FILTER (WHERE result IS NOT NULL) AS total_games,
+         COUNT(*) FILTER (WHERE result = 'win') AS wins,
+         COUNT(*) FILTER (WHERE result = 'lose') AS losses
+       FROM game_sessions
+       WHERE user_id = $1`,
+      [userId]
+    );
+
+    const bestTimesRes = await pool.query(
+      `SELECT difficulty, MIN(time_elapsed) AS best_time
+       FROM game_sessions
+       WHERE user_id = $1 AND result = 'win'
+       GROUP BY difficulty
+       ORDER BY difficulty`,
+      [userId]
+    );
+
+    const recentRes = await pool.query(
+      `SELECT id, user_id, difficulty, width, height, mines, result, time_elapsed, moves, created_at
+       FROM game_sessions
+       WHERE user_id = $1 AND result IS NOT NULL
+       ORDER BY created_at DESC
+       LIMIT $2`,
+      [userId, limit]
+    );
+
+    const totalsRow = totalsRes.rows[0];
+    const totalGames = Number(totalsRow.total_games ?? 0);
+    const wins = Number(totalsRow.wins ?? 0);
+    const losses = Number(totalsRow.losses ?? 0);
+
+    res.json({
+      totals: {
+        total_games: totalGames,
+        wins,
+        losses,
+        win_rate: totalGames > 0 ? wins / totalGames : 0,
+      },
+      best_time_by_difficulty: bestTimesRes.rows.map((r) => ({
+        difficulty: r.difficulty,
+        best_time: r.best_time === null ? null : Number(r.best_time),
+      })),
+      recent_history: recentRes.rows,
+    });
+  } catch (err) {
+    console.error("GET /my-stats error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.patch("/sessions/:id/complete", optionalAuth, async (req, res) => {
   try {
     const id = Number(req.params.id);
     const { result, moves } = req.body ?? {};
@@ -141,14 +221,23 @@ router.patch("/sessions/:id/complete", async (req, res) => {
       return res.status(400).json({ error: "moves must be a non-negative integer" });
     }
 
+    const s = await getSessionById(id);
+    if (!s) {
+      return res.status(404).json({ error: "Session not found" });
+    }
+
+    if (!canAccessSession(req, s)) {
+      return res.status(403).json({ error: "Forbidden: session belongs to another user" });
+    }
+
     const dbRes = await pool.query(
       `UPDATE game_sessions
-      SET result = $1,
-          moves = $2,
-          end_time = NOW(),
-          time_elapsed = GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (NOW() - created_at))))
-      WHERE id = $3 AND result IS NULL
-      RETURNING id, difficulty, width, height, mines, result, time_elapsed, moves, created_at, end_time`,
+       SET result = $1,
+           moves = $2,
+           end_time = NOW(),
+           time_elapsed = GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (NOW() - created_at))))
+       WHERE id = $3 AND result IS NULL
+       RETURNING id, user_id, difficulty, width, height, mines, result, time_elapsed, moves, created_at, end_time`,
       [result, moves, id]
     );
 
@@ -167,7 +256,7 @@ router.patch("/sessions/:id/complete", async (req, res) => {
 });
 
 
-router.post("/start", async (req, res) => {
+router.post("/start", optionalAuth, async (req, res) => {
   try {
     const { difficulty } = req.body;
 
@@ -177,13 +266,14 @@ router.post("/start", async (req, res) => {
       return res.status(400).json({ error: "Invalid difficulty" });
     }
 
+    const userId = req.user?.id ?? null;
     const seed = makeSeed();
 
     const result = await pool.query(
-      `INSERT INTO game_sessions (difficulty, width, height, mines, seed)
-      VALUES ($1, $2, $3, $4, $5)
-      RETURNING id, difficulty, width, height, mines, seed, created_at`,
-      [selected.name, selected.width, selected.height, selected.mines, seed]
+      `INSERT INTO game_sessions (user_id, difficulty, width, height, mines, seed)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, user_id, difficulty, width, height, mines, seed, created_at`,
+      [userId, selected.name, selected.width, selected.height, selected.mines, seed]
     );
 
     res.json({
@@ -197,7 +287,7 @@ router.post("/start", async (req, res) => {
 });
 
 
-router.get("/sessions/:id/board", async (req, res) => {
+router.get("/sessions/:id/board", optionalAuth, async (req, res) => {
   try {
     const id = Number(req.params.id);
     const safeX = Number(req.query.safe_x);
@@ -209,7 +299,7 @@ router.get("/sessions/:id/board", async (req, res) => {
     }
 
     const dbRes = await pool.query(
-      `SELECT id, width, height, mines, seed
+      `SELECT id, user_id, width, height, mines, seed
        FROM game_sessions
        WHERE id = $1`,
       [id]
@@ -217,6 +307,10 @@ router.get("/sessions/:id/board", async (req, res) => {
     if (dbRes.rowCount === 0) return res.status(404).json({ error: "Session not found" });
 
     const s = dbRes.rows[0];
+
+    if (!canAccessSession(req, s)) {
+      return res.status(403).json({ error: "Forbidden: session belongs to another user" });
+    }
 
     const board = generateBoard({
       width: s.width,
@@ -257,14 +351,22 @@ router.get("/leaderboard", async (req, res) => {
     const safeLimit = Math.min(parsedLimit, 100);
 
     const dbRes = await pool.query(
-      `SELECT id, user_id, difficulty, time_elapsed, moves, created_at
-       FROM game_sessions
-       WHERE difficulty = $1
-         AND result = 'win'
-         AND time_elapsed IS NOT NULL
-         AND moves IS NOT NULL
-       ORDER BY time_elapsed ASC, moves ASC, created_at ASC
-       LIMIT $2`,
+      `SELECT 
+        gs.id,
+        gs.user_id,
+        u.username,
+        gs.difficulty,
+        gs.time_elapsed,
+        gs.moves,
+        gs.created_at
+      FROM game_sessions gs
+      LEFT JOIN users u ON gs.user_id = u.id
+      WHERE gs.difficulty = $1
+        AND gs.result = 'win'
+        AND gs.time_elapsed IS NOT NULL
+        AND gs.moves IS NOT NULL
+      ORDER BY gs.time_elapsed ASC, gs.moves ASC, gs.created_at ASC
+      LIMIT $2`,
       [difficulty, safeLimit]
     );
 
@@ -272,6 +374,7 @@ router.get("/leaderboard", async (req, res) => {
       rank: index + 1,
       id: row.id,
       user_id: row.user_id,
+      username: row.username ?? null,
       difficulty: row.difficulty,
       time_elapsed: row.time_elapsed,
       moves: row.moves,
@@ -290,7 +393,7 @@ router.get("/leaderboard", async (req, res) => {
   }
 });
 
-router.post("/sessions/:id/reveal", async (req, res) => {
+router.post("/sessions/:id/reveal", optionalAuth, async (req, res) => {
   try {
     const id = Number(req.params.id);
     const x = Number(req.body?.x);
@@ -301,7 +404,7 @@ router.post("/sessions/:id/reveal", async (req, res) => {
 
     // Load session config + first click
     const dbRes = await pool.query(
-      `SELECT id, width, height, mines, seed, result, first_click_x, first_click_y
+      `SELECT id, user_id, width, height, mines, seed, result, first_click_x, first_click_y
        FROM game_sessions
        WHERE id = $1`,
       [id]
@@ -310,7 +413,11 @@ router.post("/sessions/:id/reveal", async (req, res) => {
 
     const s = dbRes.rows[0];
 
-    // If you treat "result" as completed, block further play
+    if (!canAccessSession(req, s)) {
+      return res.status(403).json({ error: "Forbidden: session belongs to another user" });
+    }
+
+    // block further play
     if (s.result !== null) {
       return res.status(409).json({ error: "Session already completed", result: s.result });
     }
@@ -442,7 +549,7 @@ router.post("/sessions/:id/reveal", async (req, res) => {
 });
 
 
-router.post("/sessions/:id/flag", async (req, res) => {
+router.post("/sessions/:id/flag", optionalAuth, async (req, res) => {
   try {
     const id = Number(req.params.id);
     const x = Number(req.body?.x);
@@ -452,7 +559,7 @@ router.post("/sessions/:id/flag", async (req, res) => {
     if (!Number.isInteger(x) || !Number.isInteger(y)) return res.status(400).json({ error: "x and y must be integers" });
 
     const dbRes = await pool.query(
-      `SELECT id, width, height, result
+      `SELECT id, user_id, width, height, result
        FROM game_sessions
        WHERE id = $1`,
       [id]
@@ -461,7 +568,11 @@ router.post("/sessions/:id/flag", async (req, res) => {
 
     const s = dbRes.rows[0];
 
-    // If you use DB result as “final,” block further actions
+    if (!canAccessSession(req, s)) {
+      return res.status(403).json({ error: "Forbidden: session belongs to another user" });
+    }
+
+    // block further actions
     if (s.result !== null) {
       return res.status(409).json({ error: "Session already completed", result: s.result });
     }
@@ -508,3 +619,49 @@ router.post("/sessions/:id/flag", async (req, res) => {
 
 
 export default router;
+
+
+
+
+/*
+node src/app.mjs
+
+Example cURL commands:
+
+curl http://127.0.0.1:3000/
+
+curl http://127.0.0.1:3000/api/game/difficulties
+
+curl -X POST "http://127.0.0.1:3000/api/game/start" \
+  -H "Content-Type: application/json" \
+  -d '{"difficulty":"easy"}'
+
+
+curl -X POST "http://127.0.0.1:3000/api/game/sessions/ID/reveal" \
+  -H "Content-Type: application/json" \
+  -d '{"x":0,"y":0}'
+
+
+curl -X POST "http://127.0.0.1:3000/api/game/sessions/ID/flag" \
+  -H "Content-Type: application/json" \
+  -d '{"x":1,"y":1}'
+
+
+curl -X PATCH "http://127.0.0.1:3000/api/game/sessions/ID/complete" \
+  -H "Content-Type: application/json" \
+  -d '{"result":"win","moves":10}'
+
+
+curl "http://127.0.0.1:3000/api/game/leaderboard?difficulty=easy&limit=10"
+
+
+curl "http://127.0.0.1:3000/api/game/stats?user_id=1&limit=10"
+
+
+curl "http://127.0.0.1:3000/api/game/leaderboard?difficulty=invalid"
+
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MywidXNlcm5hbWUiOiJ1c2VyMSIsImlhdCI6MTc3NTg2OTc0MiwiZXhwIjoxNzc1ODczMzQyfQ.agiO1yWlRgFxuCoTKekPHE7ATTIgExq4xwtvDQGeVTQ
+
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NCwidXNlcm5hbWUiOiJ1c2VyMiIsImlhdCI6MTc3NTg2OTc2NCwiZXhwIjoxNzc1ODczMzY0fQ.YSeGu8dXAs6klnYGdjQleb6f8CAs8AAOpskdqK4t24g
+
+*/

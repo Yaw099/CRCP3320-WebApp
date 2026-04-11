@@ -2,6 +2,7 @@ import "dotenv/config";
 import express from 'express';
 import indexRoutes from "./routes/index.js";
 import gameRoutes from "./routes/game.js";
+import authRoutes from './routes/auth.js';
 import { pool } from "./db.mjs";
 
 const app = express();
@@ -13,8 +14,10 @@ app.use(express.json());
 // console.log("DB:", r.rows[0]);
 
 // Mount routes
+app.use('/api/auth', authRoutes);
 app.use("/", indexRoutes);
 app.use("/api/game", gameRoutes);
+
 
 
 
@@ -22,7 +25,7 @@ app.listen(port, () => {
   console.log(`Minesweeper Arcade backend running on http://localhost:${port}`);
 });
 
-
+export default app;
 
 
 //  http://localhost:3000/api/game/start
@@ -52,4 +55,7 @@ SELECT id, difficulty, seed FROM game_sessions;
 
 curl http://127.0.0.1:3000/api/game/stats
 curl "http://127.0.0.1:3000/api/game/stats?user_id=1"
+
+
+docker exec -i minesweeper_db psql -U postgres -d minesweeper_arcade < src/db/schema.sql
 */
