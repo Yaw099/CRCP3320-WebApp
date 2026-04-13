@@ -71,7 +71,6 @@ router.get("/stats", async (req, res) => {
     }
 
     // If user_id is omitted, return overall stats across all sessions (useful during dev).
-    // If you want “guest stats” specifically, change filter to `user_id IS NULL` when rawUserId is missing.
     let filterSql = "";
     let params = [];
     if (rawUserId !== undefined) {
@@ -125,7 +124,7 @@ router.get("/stats", async (req, res) => {
         total_games: totalGames,
         wins,
         losses,
-        win_rate: winRate, // decimal (0.0–1.0). If you prefer percent, multiply by 100 on the client.
+        win_rate: winRate, // decimal (0.0–1.0).
       },
       best_time_by_difficulty: bestTimesRes.rows.map((r) => ({
         difficulty: r.difficulty,
@@ -321,8 +320,7 @@ router.get("/sessions/:id/board", optionalAuth, async (req, res) => {
       safeY,
     });
 
-    // For now we return the full board including mines (debug).
-    // Later, for real gameplay, you will NOT send mines to the client.
+    // For now, return the full board including mines (debug).
     res.json({ session_id: s.id, safe: { x: safeX, y: safeY }, board });
   } catch (err) {
     console.error("GET /sessions/:id/board error:", err);
@@ -478,7 +476,7 @@ router.post("/sessions/:id/reveal", optionalAuth, async (req, res) => {
     // Loss check
     if (board[y][x].mine) {
       st.status = "lost";
-      // Optional: immediately mark DB as lose (if you want server-authoritative results)
+      // Optional: immediately mark DB as lose 
       await pool.query(
         `UPDATE game_sessions
         SET result = 'lose',
@@ -663,5 +661,80 @@ curl "http://127.0.0.1:3000/api/game/leaderboard?difficulty=invalid"
 eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MywidXNlcm5hbWUiOiJ1c2VyMSIsImlhdCI6MTc3NTg2OTc0MiwiZXhwIjoxNzc1ODczMzQyfQ.agiO1yWlRgFxuCoTKekPHE7ATTIgExq4xwtvDQGeVTQ
 
 eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6NCwidXNlcm5hbWUiOiJ1c2VyMiIsImlhdCI6MTc3NTg2OTc2NCwiZXhwIjoxNzc1ODczMzY0fQ.YSeGu8dXAs6klnYGdjQleb6f8CAs8AAOpskdqK4t24g
+
+
+Demo 4:
+
+
+Register new user:
+
+curl -X POST http://localhost:3000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"demo1","email":"demo1@example.com","password":"Password123!"}'
+
+Login and get token:
+
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"demo1@example.com","password":"Password123!"}'
+
+TOKEN=""
+
+Verify Login:
+
+curl http://localhost:3000/api/auth/me \
+  -H "Authorization: Bearer $TOKEN"
+
+
+Create session:
+
+curl -X POST http://localhost:3000/api/game/start \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"difficulty":"easy"}'
+
+SESSION_ID=
+
+Complete session:
+
+curl -X PATCH http://localhost:3000/api/game/sessions/$SESSION_ID/complete \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"result":"win","moves":18}'
+
+
+Create a second session:
+
+curl -X POST http://localhost:3000/api/game/start \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"difficulty":"easy"}'
+
+  curl -X PATCH http://localhost:3000/api/game/sessions/$SESSION_ID/complete \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{"result":"loss","moves":7}'
+
+
+Leaderboard:
+
+curl "http://localhost:3000/api/game/leaderboard?difficulty=easy&limit=10"
+
+
+Player stats:
+
+curl http://localhost:3000/api/game/stats \
+  -H "Authorization: Bearer $TOKEN"
+
+
+
+Auth Protection:
+
+curl -X POST http://localhost:3000/api/game/start \
+  -H "Content-Type: application/json" \
+  -d '{"difficulty":"easy"}'
+
+
+curl http://localhost:3000/api/auth/me
 
 */
