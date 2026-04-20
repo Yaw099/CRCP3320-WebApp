@@ -17,13 +17,27 @@ function inBounds(x, y, w, h) {
 
 export function generateBoard({ width, height, mines, seed, safeX, safeY }) {
   const cells = width * height;
-  const safeIdx = safeY * width + safeX;
 
-  const maxMines = cells - 1; // exclude safe cell
+  const protectedCells = new Set();
+
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const nx = safeX + dx;
+      const ny = safeY + dy;
+
+      if (inBounds(nx, ny, width, height)) {
+        protectedCells.add(ny * width + nx);
+      }
+    }
+  }
+
+  const maxMines = cells - protectedCells.size;
   if (mines > maxMines) throw new Error(`Too many mines (max ${maxMines})`);
 
   const candidates = [];
-  for (let i = 0; i < cells; i++) if (i !== safeIdx) candidates.push(i);
+  for (let i = 0; i < cells; i++) {
+    if (!protectedCells.has(i)) candidates.push(i);
+  }
 
   const rand = mulberry32(seed);
   for (let i = candidates.length - 1; i > 0; i--) {
@@ -43,17 +57,19 @@ export function generateBoard({ width, height, mines, seed, safeX, safeY }) {
   }
 
   const dirs = [
-    [-1,-1],[0,-1],[1,-1],
-    [-1, 0],      [1, 0],
-    [-1, 1],[0, 1],[1, 1],
+    [-1, -1], [0, -1], [1, -1],
+    [-1,  0],           [1,  0],
+    [-1,  1], [0,  1], [1,  1],
   ];
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       if (board[y][x].mine) continue;
+
       let count = 0;
       for (const [dx, dy] of dirs) {
-        const nx = x + dx, ny = y + dy;
+        const nx = x + dx;
+        const ny = y + dy;
         if (inBounds(nx, ny, width, height) && board[ny][nx].mine) count++;
       }
       board[y][x].adj = count;
