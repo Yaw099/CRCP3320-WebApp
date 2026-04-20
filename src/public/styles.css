@@ -1,0 +1,39 @@
+body {
+  font-family: Arial, sans-serif;
+  padding: 24px;
+}
+
+.controls {
+  margin-bottom: 16px;
+}
+
+.board {
+  display: grid;
+  gap: 2px;
+  width: fit-content;
+  user-select: none;
+}
+
+.cell {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #888;
+  background: #ccc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.cell.revealed {
+  background: #eee;
+}
+
+.cell.flagged {
+  background: #ffd966;
+}
+
+.cell.mine {
+  background: #f4cccc;
+}

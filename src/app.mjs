@@ -1,34 +1,44 @@
 import "dotenv/config";
-import express from 'express';
+import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
+
 import indexRoutes from "./routes/index.js";
+import authRoutes from "./routes/auth.js";
 import gameRoutes from "./routes/game.js";
-import authRoutes from './routes/auth.js';
-import { pool } from "./db.mjs";
 
 const app = express();
 const port = process.env.PORT || 3000;
 
+// Needed in ES modules for __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Middleware
 app.use(express.json());
 
-// const r = await pool.query("SELECT current_database() AS db, inet_server_addr() AS addr, inet_server_port() AS port");
-// console.log("DB:", r.rows[0]);
+// Serve frontend files from src/public
+app.use(express.static(path.join(__dirname, "public")));
+app.use("/game", express.static(path.join(__dirname, "game")));
 
-// Mount routes
-app.use('/api/auth', authRoutes);
-app.use("/", indexRoutes);
+// API routes
+app.use("/api/auth", authRoutes);
 app.use("/api/game", gameRoutes);
+app.use("/api", indexRoutes);
 
-
-
-
-app.listen(port, () => {
-  console.log(`Minesweeper Arcade backend running on http://localhost:${port}`);
+// Optional health/root route
+app.get("/health", (req, res) => {
+  res.json({ ok: true });
 });
 
-export default app;
+app.listen(port, () => {
+  console.log(`Server running at http://localhost:${port}`);
+});
 
 
-//  http://localhost:3000/api/game/start
+// demo  
+
+//http://localhost:3000/api/game/start
 
 // node src/app.mjs
 

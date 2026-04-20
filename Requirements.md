@@ -68,9 +68,9 @@ The system shall allow the client to submit a completed game result (win/loss, t
 
 - [ ] FR8 – User Accounts and Authentication
 The system shall allow users to register and log in.
-    - [ ] FR8.1 The system shall securely store passwords (hashed + salted).
-    - [ ] FR8.2 The system shall support logout.
-    - [ ] FR8.3 The system shall associate saved results with a user account when logged in.
+    - [x] FR8.1 The system shall securely store passwords (hashed + salted).
+    - [x] FR8.2 The system shall support logout.
+    - [x] FR8.3 The system shall associate saved results with a user account when logged in.
 
 - [x] FR9 – Leaderboards
 The system shall provide leaderboards filtered by difficulty.

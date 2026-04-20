@@ -265,8 +265,8 @@ router.post("/start", optionalAuth, async (req, res) => {
       return res.status(400).json({ error: "Invalid difficulty" });
     }
 
-    const userId = req.user?.id ?? null;
     const seed = makeSeed();
+    const userId = req.user ? req.user.id : null;
 
     const result = await pool.query(
       `INSERT INTO game_sessions (user_id, difficulty, width, height, mines, seed)
@@ -736,5 +736,8 @@ curl -X POST http://localhost:3000/api/game/start \
 
 
 curl http://localhost:3000/api/auth/me
+
+
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6OCwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsImlhdCI6MTc3NjcxMjc4NiwiZXhwIjoxNzc2NzE2Mzg2fQ.GrDHC1dtgz7aDHVTwLy5GxB28_mlLJuOfcEnsvcnMjw
 
 */
