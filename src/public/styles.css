@@ -1,10 +1,33 @@
 body {
   font-family: Arial, sans-serif;
   padding: 24px;
+  background: #f7f7f7;
+}
+
+.game-page {
+  max-width: 900px;
+  background: white;
+  padding: 24px;
+  border: 1px solid #ddd;
 }
 
 .controls {
+  display: flex;
+  gap: 8px;
   margin-bottom: 16px;
+}
+
+.hud {
+  display: flex;
+  gap: 24px;
+  margin: 12px 0;
+  font-weight: bold;
+}
+
+.message {
+  margin: 12px 0;
+  font-weight: bold;
+  min-height: 24px;
 }
 
 .board {
@@ -24,6 +47,7 @@ body {
   justify-content: center;
   font-weight: bold;
   cursor: pointer;
+  padding: 0;
 }
 
 .cell.revealed {
@@ -36,4 +60,68 @@ body {
 
 .cell.mine {
   background: #f4cccc;
+}
+
+table {
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+td, th {
+  border: 1px solid #999;
+  padding: 6px 10px;
+}
+
+.panel {
+  margin-top: 24px;
+}
+
+.auth-form {
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 8px;
+  margin-top: 12px;
+  max-width: 420px;
+}
+
+.auth-form input {
+  padding: 6px 8px;
+}
+
+.auth-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.auth-buttons button,
+.controls button,
+.controls select {
+  padding: 6px 10px;
+}
+
+#auth-status {
+  font-weight: bold;
+  margin-top: 8px;
+}
+
+#auth-message {
+  margin-top: 10px;
+  min-height: 20px;
+}
+
+.auth-help {
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.panel h2 {
+  margin-bottom: 10px;
+}
+
+#leaderboard,
+#stats {
+  overflow-x: auto;
 }

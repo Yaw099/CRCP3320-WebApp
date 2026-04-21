@@ -7,19 +7,62 @@
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-  <h1>Minesweeper Arcade</h1>
+  <main class="game-page">
+    <h1>Minesweeper Arcade</h1>
 
-  <div class="controls">
-    <select id="difficulty">
-      <option value="easy">Easy</option>
-      <option value="medium">Medium</option>
-      <option value="hard">Hard</option>
-    </select>
-    <button id="new-game">New Game</button>
-  </div>
+    <div class="controls">
+      <select id="difficulty">
+        <option value="easy">Easy</option>
+        <option value="medium">Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+      <button id="new-game">New Game</button>
+    </div>
 
-  <div id="status">Status: Ready</div>
-  <div id="board" class="board"></div>
+    <div class="hud">
+      <div id="timer">Time: 00:00</div>
+      <div id="mine-count">Mines: 0</div>
+    </div>
+
+    <div id="message" class="message"></div>
+    <div id="board" class="board"></div>
+
+    <section class="panel">
+      <h2>Leaderboard</h2>
+      <div id="leaderboard"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Account</h2>
+
+      <div id="auth-status">Not signed in</div>
+
+      <div class="auth-form">
+        <label for="auth-username">Username</label>
+        <input id="auth-username" placeholder="Username" />
+
+        <label for="auth-email">Email</label>
+        <input id="auth-email" placeholder="Email" />
+
+        <label for="auth-password">Password</label>
+        <input id="auth-password" type="password" placeholder="Password" />
+      </div>
+
+      <div class="auth-buttons">
+        <button id="register-btn">Register</button>
+        <button id="login-btn">Login</button>
+        <button id="logout-btn">Logout</button>
+      </div>
+
+      <div id="auth-message"></div>
+      <p class="auth-help">Register creates an account. Login uses an existing one.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Stats</h2>
+      <div id="stats"></div>
+    </section>
+  </main>
 
   <script type="module" src="/main.js"></script>
 </body>

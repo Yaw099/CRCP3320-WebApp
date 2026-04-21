@@ -86,10 +86,10 @@ The system shall provide player stats such as:
 
 - [ ] FR11 – Front-End UI Requirements
 The system shall provide a web UI for playing Minesweeper.
-    - [ ] FR11.1 The UI shall render the grid and update in response to user actions.
-    - [ ] FR11.2 The UI shall display timer, mine count, and game status (playing/won/lost).
-    - [ ] FR11.3 The UI shall allow selecting difficulty and starting a new game.
-    - [ ] FR11.4 The UI shall display basic results and allow viewing leaderboards and stats.
+    - [x] FR11.1 The UI shall render the grid and update in response to user actions.
+    - [x] FR11.2 The UI shall display timer, mine count, and game status (playing/won/lost).
+    - [x] FR11.3 The UI shall allow selecting difficulty and starting a new game.
+    - [x] FR11.4 The UI shall display basic results and allow viewing leaderboards and stats.
 
 - [ ] FR12 – Deployment Support
 The system shall provide documentation and configuration to run locally and deploy to a cloud host.
