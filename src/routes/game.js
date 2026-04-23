@@ -70,7 +70,7 @@ router.get("/stats", async (req, res) => {
       return res.status(400).json({ error: "limit must be an integer between 1 and 100" });
     }
 
-    // If user_id is omitted, return overall stats across all sessions (useful during dev).
+    // If user_id is omitted, return overall stats across all sessions
     let filterSql = "";
     let params = [];
     if (rawUserId !== undefined) {
@@ -124,7 +124,7 @@ router.get("/stats", async (req, res) => {
         total_games: totalGames,
         wins,
         losses,
-        win_rate: winRate, // decimal (0.0–1.0).
+        win_rate: winRate, // decimal
       },
       best_time_by_difficulty: bestTimesRes.rows.map((r) => ({
         difficulty: r.difficulty,
@@ -257,12 +257,50 @@ router.patch("/sessions/:id/complete", optionalAuth, async (req, res) => {
 
 router.post("/start", optionalAuth, async (req, res) => {
   try {
-    const { difficulty } = req.body;
+    const { difficulty, width, height, mines } = req.body ?? {};
 
-    const selected = difficulties.find((d) => d.name === difficulty);
+    let selected;
 
-    if (!selected) {
-      return res.status(400).json({ error: "Invalid difficulty" });
+    if (difficulty === "custom") {
+      const w = Number(width);
+      const h = Number(height);
+      const m = Number(mines);
+
+      if (!Number.isInteger(w) || w < 5 || w > 50) {
+        return res.status(400).json({
+          error: "width must be between 5 and 50"
+        });
+      }
+
+      if (!Number.isInteger(h) || h < 5 || h > 40) {
+        return res.status(400).json({
+          error: "height must be between 5 and 40"
+        });
+      }
+
+      const maxMines = w * h - 9;
+
+      if (!Number.isInteger(m) || m < 1 || m > maxMines) {
+        return res.status(400).json({
+          error: `mines must be between 1 and ${maxMines}`
+        });
+      }
+
+      selected = {
+        name: "custom",
+        width: w,
+        height: h,
+        mines: m
+      };
+
+    } else {
+      selected = difficulties.find((d) => d.name === difficulty);
+
+      if (!selected) {
+        return res.status(400).json({
+          error: "difficulty must be easy, medium, hard, or custom"
+        });
+      }
     }
 
     const seed = makeSeed();
@@ -320,7 +358,7 @@ router.get("/sessions/:id/board", optionalAuth, async (req, res) => {
       safeY,
     });
 
-    // For now, return the full board including mines (debug).
+    // Return the full board including mines
     res.json({ session_id: s.id, safe: { x: safeX, y: safeY }, board });
   } catch (err) {
     console.error("GET /sessions/:id/board error:", err);
@@ -437,11 +475,11 @@ router.post("/sessions/:id/reveal", optionalAuth, async (req, res) => {
 
     const k = cellKey(x, y);
     if (st.flagged.has(k)) {
-      // common behavior: clicking a flag does nothing
+      // Clicking a flag does nothing
       return res.json({ status: st.status, moves: st.moves, revealed: [], message: "Tile is flagged" });
     }
 
-    // If first click not set, set it now (Option A)
+    // If first click not set, set now
     let safeX = s.first_click_x;
     let safeY = s.first_click_y;
 
@@ -476,7 +514,7 @@ router.post("/sessions/:id/reveal", optionalAuth, async (req, res) => {
     // Loss check
     if (board[y][x].mine) {
       st.status = "lost";
-      // Optional: immediately mark DB as lose 
+      // Immediately mark DB as lose 
       await pool.query(
         `UPDATE game_sessions
         SET result = 'lose',
@@ -489,7 +527,7 @@ router.post("/sessions/:id/reveal", optionalAuth, async (req, res) => {
       return res.json({ status: st.status, moves: st.moves, revealed: [{ x, y, adj: null }], hit_mine: true });
     }
 
-    // Reveal with flood-fill when adj == 0 (FR5.3)
+    // Reveal with flood-fill when adj == 0
     const revealedNow = [];
     const queue = [[x, y]];
 
@@ -518,7 +556,7 @@ router.post("/sessions/:id/reveal", optionalAuth, async (req, res) => {
       }
     }
 
-    // Win check (FR5.4)
+    // Win check
     const totalCells = s.width * s.height;
     const safeCells = totalCells - s.mines;
     if (st.revealed.size >= safeCells) {
@@ -739,5 +777,11 @@ curl http://localhost:3000/api/auth/me
 
 
 eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6OCwidXNlcm5hbWUiOiJ0ZXN0dXNlciIsImlhdCI6MTc3NjcxMjc4NiwiZXhwIjoxNzc2NzE2Mzg2fQ.GrDHC1dtgz7aDHVTwLy5GxB28_mlLJuOfcEnsvcnMjw
+
+
+
+testtest
+testemail@test.com
+123456
 
 */
